@@ -241,6 +241,15 @@ async function buildContainerArgs(
   });
   if (onecliApplied) {
     logger.info({ containerName }, 'OneCLI gateway config applied');
+    // If a credentials file exists, let Claude Code use OAuth directly
+    // instead of the OneCLI placeholder key.
+    const claudeMount = mounts.find(m => m.containerPath === '/home/node/.claude');
+    const credFile = claudeMount && path.join(claudeMount.hostPath, '.credentials.json');
+    if (credFile && fs.existsSync(credFile)) {
+      // Clear OneCLI's proxy and placeholder key so Claude Code uses OAuth directly
+      args.push('-e', 'ANTHROPIC_API_KEY=', '-e', 'HTTPS_PROXY=', '-e', 'HTTP_PROXY=');
+      logger.info({ containerName }, 'Credentials file found — using OAuth, bypassing proxy');
+    }
   } else {
     logger.warn(
       { containerName },
